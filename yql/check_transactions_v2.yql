@@ -1,0 +1,12 @@
+SELECT COUNT(*) AS row_count
+FROM transactions_v2;
+
+SELECT
+    region_code,
+    campaign_type,
+    COUNT(*) AS calls_count,
+    AVG(CAST(duration_sec AS Double)) AS avg_duration_sec
+FROM transactions_v2
+GROUP BY region_code, campaign_type
+ORDER BY calls_count DESC
+LIMIT 20;
