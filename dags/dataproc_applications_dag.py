@@ -48,7 +48,6 @@ with DAG(
         computenode_count=1,
         connection_id='yandexcloud_default',
         security_group_ids=[security_group_id],
-        oslogin_enabled=True
     )
 
     run_pyspark = DataprocCreatePysparkJobOperator(
