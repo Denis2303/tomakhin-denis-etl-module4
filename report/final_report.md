@@ -4,31 +4,32 @@
 **Дисциплина:** ETL-процессы  
 **Модуль:** 4  
 
-## 1. Краткое описание проекта
+## 1. Краткое описание
 
-В рамках работы был подготовлен проект по построению ETL-процессов в Yandex Cloud.
+В рамках итоговой работы был подготовлен учебный ETL-проект в Yandex Cloud.
 
-В проекте реализованы:
+Фактически были выполнены два блока:
 
-- генерация тестовых данных нужного объёма;
-- загрузка данных в YDB;
-- перенос данных из YDB в Object Storage через DataTransfer;
-- обработка CSV-файла через PySpark в Yandex Data Processing;
-- автоматизация PySpark-обработки через Apache Airflow;
-- подготовка Kafka-блока на уровне кода;
-- подготовка описания DataLens-дашборда.
+1. перенос данных из YDB в Object Storage через Yandex DataTransfer;
+2. обработка CSV-файла через Yandex Data Processing и автоматизация запуска через Apache Airflow.
 
-## 2. Локальная генерация данных
+Kafka и DataLens в облаке не разворачивались. Для Kafka в проекте оставлена подготовленная кодовая часть, но этот блок не считается полностью выполненным.
 
-Для работы были подготовлены три набора данных:
+## 2. Подготовка данных
 
-| Файл | Назначение | Размер |
+Для проекта были сгенерированы тестовые данные.
+
+| Файл | Для чего используется | Требуемый объём |
 |---|---|---:|
-| `transactions_v2.csv` | данные для YDB и DataTransfer | больше 30 МБ |
-| `applications.csv` | данные для PySpark-обработки | больше 50 МБ |
-| `kafka_loan_events.jsonl` | JSON-события для Kafka | больше 20 МБ |
+| `transactions_v2.csv` | загрузка в YDB и перенос через DataTransfer | больше 30 МБ |
+| `applications.csv` | обработка через PySpark | больше 50 МБ |
+| `kafka_loan_events.jsonl` | заготовка для Kafka-блока | больше 20 МБ |
 
-Данные генерировались локально с помощью Python-скриптов из папки `data_generators`.
+Скрипты генерации находятся в папке:
+
+```text
+data_generators
+```
 
 Проверка размеров выполнялась скриптом:
 
@@ -36,7 +37,7 @@
 scripts/local_size_check.py
 ```
 
-Скриншот:
+Скриншот проверки размеров:
 
 ```text
 screenshots/01_local_data_sizes.png
@@ -44,35 +45,41 @@ screenshots/01_local_data_sizes.png
 
 ## 3. Задание 1. YDB и DataTransfer
 
-Для первого задания была создана YDB-база данных и таблица:
+Для первого задания использовался файл:
+
+```text
+transactions_v2.csv
+```
+
+В YDB была создана таблица:
 
 ```text
 transactions_v2
 ```
 
-Таблица создавалась с помощью YQL-скрипта:
+Скрипт создания таблицы:
 
 ```text
 yql/create_transactions_v2.yql
 ```
 
-После этого в таблицу был загружен CSV-файл `transactions_v2.csv`.
+После создания таблицы CSV-файл был загружен в YDB.
 
-Проверка количества строк выполнялась скриптом:
+Проверка данных выполнялась через YQL-скрипт:
 
 ```text
 yql/check_transactions_v2.yql
 ```
 
-После загрузки данных был настроен DataTransfer:
+После загрузки таблицы был настроен Yandex DataTransfer:
 
 ```text
 YDB -> Object Storage
 ```
 
-Transfer был запущен в режиме копирования данных. После завершения в Object Storage появились выгруженные JSON-файлы с данными из таблицы `transactions_v2`.
+Transfer был запущен в режиме копирования данных. После выполнения данные появились в Object Storage в виде JSON-файлов.
 
-Скриншоты:
+Скриншоты по заданию:
 
 ```text
 screenshots/04_ydb_transactions_loaded.png
@@ -91,15 +98,28 @@ applications.csv
 
 Файл был загружен в Object Storage.
 
-Для обработки использовался PySpark-скрипт:
+Для обработки был подготовлен PySpark-скрипт:
 
 ```text
 spark/process_applications.py
 ```
 
-Скрипт читает CSV-файл, приводит типы данных, очищает данные и сохраняет результат в Object Storage.
+Скрипт выполняет базовую ETL-обработку:
 
-В результате обработки формируются папки:
+1. читает CSV-файл из Object Storage;
+2. приводит поля к нужным типам;
+3. очищает данные;
+4. формирует итоговую таблицу заявок;
+5. формирует агрегированные таблицы;
+6. сохраняет результат в Object Storage в формате parquet.
+
+Результаты ручного запуска сохранялись в папку:
+
+```text
+processed/applications
+```
+
+Основные выходные папки:
 
 ```text
 processed/applications/applications_clean
@@ -107,9 +127,9 @@ processed/applications/applications_daily_summary
 processed/applications/applications_monthly_summary
 ```
 
-Сначала PySpark-задание было запущено вручную в Yandex Data Processing. После успешной проверки ручной кластер был удалён.
+PySpark job был успешно запущен вручную в Yandex Data Processing. После проверки ручной кластер был удалён.
 
-Скриншоты:
+Скриншоты по ручному запуску:
 
 ```text
 screenshots/08_dataproc_cluster_running.png
@@ -119,7 +139,7 @@ screenshots/10_dataproc_output_files.png
 
 ## 5. Airflow-автоматизация
 
-Для автоматизации обработки был создан Managed Airflow.
+Для автоматизации второго задания был создан Managed Airflow.
 
 DAG находится в файле:
 
@@ -127,7 +147,7 @@ DAG находится в файле:
 dags/dataproc_applications_dag.py
 ```
 
-DAG выполняет три задачи:
+DAG состоит из трёх задач:
 
 ```text
 create_dataproc_cluster
@@ -135,9 +155,13 @@ run_applications_pyspark
 delete_dataproc_cluster
 ```
 
-Логика такая: Airflow создаёт временный Data Processing кластер, запускает PySpark-задание, а после выполнения удаляет кластер. Это позволяет не держать Data Processing постоянно включённым.
+Логика DAG:
 
-DAG был успешно запущен. После выполнения появились результаты в Object Storage:
+1. Airflow создаёт временный Data Processing кластер.
+2. На этом кластере запускается PySpark-задание.
+3. После выполнения кластер удаляется.
+
+DAG был успешно запущен. После запуска результат появился в Object Storage:
 
 ```text
 processed/applications_airflow_v2
@@ -145,7 +169,7 @@ processed/applications_airflow_v2
 
 Также была проверена очистка временного Data Processing кластера после завершения DAG.
 
-Скриншоты:
+Скриншоты по Airflow:
 
 ```text
 screenshots/11_airflow_cluster_running.png
@@ -155,9 +179,11 @@ screenshots/15_airflow_output_files.png
 screenshots/16_dataproc_cluster_deleted_after_airflow.png
 ```
 
-## 6. Kafka-блок
+## 6. Kafka
 
-Для Kafka-блока в проекте подготовлена кодовая часть:
+Kafka-блок не был полностью развёрнут и проверен в Yandex Cloud.
+
+В репозитории оставлены подготовленные файлы:
 
 ```text
 data_generators/generate_kafka_events.py
@@ -165,40 +191,48 @@ kafka/send_events_to_kafka.py
 spark/kafka_flatten.py
 ```
 
-Генератор создаёт JSON-события по заявкам. Скрипт `send_events_to_kafka.py` предназначен для отправки сообщений в Kafka topic. PySpark-скрипт `kafka_flatten.py` читает сообщения из Kafka, разбирает вложенный JSON и сохраняет данные в плоском виде.
+Эти файлы показывают планируемую логику Kafka-блока:
 
-Полностью развернуть и проверить Managed Kafka в Yandex Cloud я не успел, поэтому этот блок оставлен как подготовленная кодовая часть без облачного запуска.
+1. сгенерировать JSON-события;
+2. отправить события в Kafka topic;
+3. прочитать сообщения через PySpark;
+4. разобрать вложенный JSON;
+5. сохранить плоскую таблицу.
+
+Так как Managed Kafka не был развёрнут, скриншоты Kafka cluster, topic и Kafka PySpark job в отчёт не добавлялись.
 
 ## 7. DataLens
 
-Для DataLens подготовлено описание дашборда:
+DataLens-дашборд не был собран в Yandex Cloud.
+
+В проекте оставлено описание возможного дашборда:
 
 ```text
 datalens/dashboard_description.md
 ```
 
-В качестве основы для визуализации можно использовать агрегированные данные после PySpark-обработки.
-
-Планируемые графики:
-
-- количество заявок по дням;
-- количество заявок по статусам;
-- средняя сумма заявки по уровню риска;
-- распределение заявок по регионам.
-
-Если DataLens-дашборд будет собран отдельно, скриншоты можно добавить в папку `screenshots`.
+Дашборд можно было бы построить на основе агрегированных данных после PySpark-обработки.
 
 ## 8. Итог
 
-В работе были полностью выполнены блоки с YDB/DataTransfer и Data Processing/Airflow.
+В работе были полностью выполнены два блока:
 
-Kafka-блок подготовлен на уровне кода, но не был развёрнут в облаке. DataLens-блок описан в проекте и может быть собран по результатам PySpark-обработки.
+1. YDB + DataTransfer.
+2. Data Processing + Apache Airflow.
 
-Основные результаты проекта находятся в репозитории:
+В результате были подготовлены:
 
-- YQL-скрипты для YDB;
-- PySpark-скрипты;
-- Airflow DAG;
 - генераторы тестовых данных;
-- описание архитектуры;
-- отчёт и скриншоты выполнения.
+- YQL-скрипты для YDB;
+- PySpark-скрипт обработки CSV;
+- Airflow DAG;
+- скриншоты выполнения;
+- итоговый отчёт.
+
+Kafka и DataLens остались как подготовленные, но не развёрнутые части проекта.
+
+GitHub-репозиторий:
+
+```text
+https://github.com/Denis2303/tomakhin-denis-etl-module4
+```

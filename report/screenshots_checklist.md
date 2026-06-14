@@ -1,37 +1,41 @@
-# Чек-лист скриншотов
+﻿# Чек-лист скриншотов
 
-## Задание 1
+## Выполнено. Задание 1
 
-- YDB database создана.
-- Таблица `transactions_v2` создана.
-- Проверочный запрос показывает количество строк.
-- Data Transfer source endpoint YDB.
-- Data Transfer target endpoint Object Storage.
-- Transfer завершён успешно.
-- В Object Storage появились файлы выгрузки.
+- [ ] Размер локального файла `transactions_v2.csv` больше 30 МБ.
+- [ ] YDB database создана.
+- [ ] Таблица `transactions_v2` создана.
+- [ ] Проверочный YQL-запрос показывает, что данные загружены.
+- [ ] DataTransfer source endpoint настроен на YDB.
+- [ ] DataTransfer target endpoint настроен на Object Storage.
+- [ ] Transfer завершился успешно.
+- [ ] В Object Storage появились файлы выгрузки из YDB.
 
-## Задание 2
+## Выполнено. Задание 2
 
-- Файл `applications.csv` лежит в Object Storage.
-- Файл `process_applications.py` лежит в Object Storage.
-- Data Processing cluster создан.
-- PySpark job завершился успешно.
-- В Object Storage появились папки результата.
-- Airflow DAG виден в UI.
-- Airflow DAG завершился успешно.
+- [ ] Файл `applications.csv` больше 50 МБ.
+- [ ] Файл `applications.csv` загружен в Object Storage.
+- [ ] Файл `process_applications.py` загружен в Object Storage.
+- [ ] Data Processing cluster был создан для ручного теста.
+- [ ] PySpark job вручную завершился успешно.
+- [ ] В Object Storage появились результаты ручной обработки.
+- [ ] Managed Airflow создан.
+- [ ] Airflow Variables настроены.
+- [ ] DAG виден в Airflow UI.
+- [ ] DAG завершился успешно.
+- [ ] В Object Storage появились результаты Airflow-запуска.
+- [ ] Временный Data Processing cluster после DAG удалён.
 
-## Задание 3
+## Не выполнялось в облаке
 
-- Kafka cluster создан.
-- Topic `loan-applications` создан.
-- Пользователь Kafka создан.
-- Сообщения отправлены в topic.
-- PySpark job для Kafka завершился успешно.
-- В Object Storage появились `kafka_events_flat` и `kafka_events_summary`.
+### Задание 3. Kafka
 
-## Задание 4
+- Managed Kafka cluster не разворачивался.
+- Kafka topic не создавался.
+- Kafka PySpark job не запускался.
+- В репозитории оставлена только подготовленная кодовая часть.
 
-- Dataset в DataLens создан.
-- Charts в DataLens созданы.
-- Dashboard в DataLens создан.
-- Ссылка или скриншот dashboard добавлены в отчёт.
+### Задание 4. DataLens
+
+- DataLens dashboard не собирался.
+- В репозитории оставлено только описание возможного дашборда.
