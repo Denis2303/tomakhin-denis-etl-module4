@@ -14,6 +14,7 @@ input_path = Variable.get('APPLICATIONS_INPUT_PATH')
 output_path = Variable.get('APPLICATIONS_OUTPUT_PATH')
 main_file = Variable.get('APPLICATIONS_PYSPARK_FILE')
 security_group_id = Variable.get('YC_SECURITY_GROUP_ID')
+ssh_public_key = Variable.get('YC_SSH_PUBLIC_KEY')
 
 with DAG(
     dag_id='etl_exam_applications_dataproc',
@@ -32,7 +33,7 @@ with DAG(
         cluster_name=cluster_name,
         cluster_description='ETL exam processing cluster',
         cluster_image_version='2.0',
-        ssh_public_keys=[],
+        ssh_public_keys=[ssh_public_key],
         subnet_id=subnet_id,
         services=('YARN', 'SPARK'),
         s3_bucket=bucket,
@@ -47,7 +48,7 @@ with DAG(
         computenode_disk_type='network-ssd',
         computenode_count=1,
         connection_id='yandexcloud_default',
-        security_group_ids=[security_group_id],
+        security_group_ids=[security_group_id]
     )
 
     run_pyspark = DataprocCreatePysparkJobOperator(
