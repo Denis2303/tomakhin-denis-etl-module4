@@ -1,32 +1,38 @@
-﻿# Инструкция по запуску проекта
+﻿# Инструкция по проекту
 
-В этом файле описаны основные шаги для воспроизведения проекта.
+Этот файл описывает, как устроен проект и какие шаги были выполнены для итогового задания по ETL-процессам.
 
-## 1. Подготовка локального окружения
+Проект делался под Windows, Python 3.10 и сервисы Yandex Cloud.
 
-Проект запускался на Windows с Python 3.10.
+## 1. Локальная подготовка
 
-Создание виртуального окружения:
+Сначала создаётся виртуальное окружение:
 
 ```powershell
 py -3.10 -m venv .venv
 ```
 
-Активация окружения:
+Потом оно активируется:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Установка зависимостей:
+После этого устанавливаются зависимости:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-## 2. Генерация тестовых данных
+## 2. Генерация данных
 
-Для задания используются три набора данных:
+В проекте используются три набора данных:
+
+* `transactions_v2.csv` — данные для YDB и DataTransfer;
+* `applications.csv` — данные для PySpark-обработки;
+* `kafka_loan_events.jsonl` — JSON-события для Kafka.
+
+Файлы генерируются командами:
 
 ```powershell
 python data_generators/generate_transactions_v2.py
@@ -34,13 +40,13 @@ python data_generators/generate_applications.py
 python data_generators/generate_kafka_events.py
 ```
 
-Проверка размеров файлов:
+Проверить размеры можно так:
 
 ```powershell
 python scripts/local_size_check.py
 ```
 
-Ожидаемые размеры:
+Ожидаемый результат:
 
 ```text
 transactions_v2.csv > 30 MB
@@ -50,21 +56,21 @@ kafka_loan_events.jsonl > 20 MB
 
 ## 3. YDB и DataTransfer
 
-Файл `transactions_v2.csv` загружается в таблицу `transactions_v2` в YDB.
+Для первой части задания используется файл `transactions_v2.csv`.
 
-Для создания таблицы используется скрипт:
+Сначала в YDB создаётся таблица `transactions_v2`. Для этого используется скрипт:
 
 ```text
 yql/create_transactions_v2.yql
 ```
 
-Для проверки загрузки используется скрипт:
+После загрузки данных таблица проверяется скриптом:
 
 ```text
 yql/check_transactions_v2.yql
 ```
 
-После загрузки таблицы был настроен DataTransfer:
+Затем через Yandex DataTransfer был настроен перенос данных:
 
 ```text
 YDB -> Object Storage
@@ -74,15 +80,17 @@ YDB -> Object Storage
 
 ## 4. Data Processing и PySpark
 
-Файл `applications.csv` загружается в Object Storage.
+Для второй части задания используется файл `applications.csv`.
 
-PySpark-скрипт:
+Он загружается в Object Storage, после чего обрабатывается PySpark-скриптом:
 
 ```text
 spark/process_applications.py
 ```
 
-Скрипт выполняет обработку заявок и сохраняет результат в Object Storage:
+Скрипт читает CSV-файл, приводит типы данных, очищает данные и формирует итоговые таблицы.
+
+Результаты сохраняются в Object Storage:
 
 ```text
 processed/applications/applications_clean
@@ -98,7 +106,7 @@ processed/applications/applications_monthly_summary
 dags/dataproc_applications_dag.py
 ```
 
-DAG выполняет три задачи:
+DAG делает три шага:
 
 ```text
 create_dataproc_cluster
@@ -106,11 +114,11 @@ run_applications_pyspark
 delete_dataproc_cluster
 ```
 
-Кластер Data Processing создаётся только на время обработки и удаляется после завершения задачи.
+То есть кластер Data Processing не работает постоянно. Он создаётся только на время обработки, запускает PySpark-задание и затем удаляется.
 
 ## 6. Kafka
 
-Для Kafka подготовлены файлы:
+Для Kafka-блока в проекте подготовлены файлы:
 
 ```text
 data_generators/generate_kafka_events.py
@@ -120,19 +128,28 @@ spark/kafka_flatten.py
 
 `generate_kafka_events.py` создаёт JSON-события.
 
-`send_events_to_kafka.py` отправляет события в Kafka topic.
+`send_events_to_kafka.py` нужен для отправки сообщений в Kafka topic.
 
-`kafka_flatten.py` читает сообщения из Kafka, разбирает вложенный JSON и сохраняет плоскую таблицу.
+`spark/kafka_flatten.py` читает сообщения из Kafka, разбирает вложенный JSON и сохраняет результат в плоском виде.
+
+Полностью развернуть и проверить Managed Kafka в Yandex Cloud я не успел. Поэтому в репозитории оставлена подготовленная кодовая часть и логика запуска этого блока.
 
 ## 7. DataLens
 
-Описание дашборда находится в файле:
+Для DataLens подготовлено описание дашборда:
 
 ```text
 datalens/dashboard_description.md
 ```
 
-Для визуализации используются агрегированные данные после PySpark-обработки.
+В качестве источника для визуализации можно использовать агрегированные данные после PySpark-обработки.
+
+Основные варианты графиков:
+
+* количество заявок по дням;
+* количество заявок по статусам;
+* средняя сумма заявки по уровню риска;
+* распределение заявок по регионам.
 
 ## 8. Отчёт
 
@@ -142,16 +159,15 @@ datalens/dashboard_description.md
 report/final_report_template.md
 ```
 
-В отчёте описаны выполненные шаги и приложены скриншоты из Yandex Cloud.
+В отчёте описываются выполненные шаги и добавляются скриншоты из Yandex Cloud.
 
-## Статус выполнения Kafka-блока
+Основные скриншоты:
 
-Для Kafka-блока подготовлены генератор JSON-событий, скрипт отправки сообщений в Kafka и PySpark-скрипт для чтения топика и преобразования вложенного JSON в плоскую структуру.
-
-Из-за ограничения по времени Managed Kafka cluster не был полностью развёрнут и проверен в Yandex Cloud. Кодовая часть для этого блока находится в репозитории и может быть использована для последующего запуска.
-
-## Статус по Kafka
-
-Kafka-блок в проекте подготовлен на уровне кода: есть генератор JSON-событий, скрипт для отправки сообщений в Kafka и PySpark-скрипт, который читает данные из топика, разбирает вложенный JSON и сохраняет результат в плоском виде.
-
-Полностью развернуть и проверить Managed Kafka в Yandex Cloud я не успел. Поэтому в репозитории оставил готовую кодовую часть и описание того, как этот блок должен запускаться.
+* размер локальных файлов;
+* загруженные файлы в Object Storage;
+* таблица в YDB;
+* успешный DataTransfer;
+* Data Processing job;
+* Airflow DAG;
+* результаты обработки в Object Storage;
+* DataLens dashboard, если он был сделан.
